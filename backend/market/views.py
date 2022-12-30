@@ -10,12 +10,14 @@ from .serializers import ManufacturerSerializer
 from .serializers import ProductCategorySerializer
 from .serializers import ProductSerializer
 from .serializers import ProductModificationSerializer
+from .serializers import OrderSerializer
 from .models import StoreHouse
 from .models import Schedule
 from .models import Manufacturer
 from .models import ProductCategory
 from .models import Product
 from .models import ProductModification
+from .models import Order
 from .mixins import PermissionsMixin
 
 
@@ -54,6 +56,9 @@ class ProductModificationViewSet(ModelViewSet, PermissionsMixin):
     queryset = ProductModification.objects.all()
 
 
-
-
+class OrdersAPIView(APIView, PermissionsMixin):
+    """Метод возвращает закрытые заказы"""
+    def get(self, request):
+        orders = Order.objects.filter(status='created').select_related('cart')
+        return Response()
 
