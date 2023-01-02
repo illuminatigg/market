@@ -24,7 +24,7 @@ from .mixins import PermissionsMixin
 class ScheduleViewSet(ModelViewSet, PermissionsMixin):
     """Класс расписания граффика работы бота"""
     serializer_class = ScheduleSerializer
-    queryset = Schedule.objects.first()
+    queryset = Schedule.objects.all()
 
 
 class StoreHouseViewSet(ModelViewSet, PermissionsMixin):
@@ -37,28 +37,32 @@ class StoreHouseViewSet(ModelViewSet, PermissionsMixin):
 
 
 class ManufacturerViewSet(ModelViewSet, PermissionsMixin):
+    """Класс производителя"""
     serializer_class = ManufacturerSerializer
     queryset = Manufacturer.objects.all()
 
 
 class ProductCategoryViewSet(ModelViewSet, PermissionsMixin):
+    """Класс категории товара"""
     serializer_class = ProductCategorySerializer
     queryset = ProductCategory.objects.all()
 
 
 class ProductViewSet(ModelViewSet, PermissionsMixin):
+    """Класс товара"""
     serializer_class = ProductSerializer
     queryset = Product.objects.all()
 
 
 class ProductModificationViewSet(ModelViewSet, PermissionsMixin):
+    """Класс модификаций товара"""
     serializer_class = ProductModificationSerializer
     queryset = ProductModification.objects.all()
 
 
-class OrdersAPIView(APIView, PermissionsMixin):
-    """Метод возвращает закрытые заказы"""
-    def get(self, request):
-        orders = Order.objects.filter(status='created').select_related('cart')
-        return Response()
+# class OrdersAPIView(APIView, PermissionsMixin):
+#     """Метод возвращает закрытые заказы"""
+#     def get(self, request):
+#         orders = Order.objects.filter(status='created').select_related('cart')
+#         return Response()
 

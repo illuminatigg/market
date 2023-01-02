@@ -25,8 +25,8 @@ SECRET_KEY = os.getenv('KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['31.184.218.182']
+CSRF_TRUSTED_ORIGINS = ['http://31.184.218.182']
 # Application definition
 
 INSTALLED_APPS = [
@@ -88,30 +88,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 
-if DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': 'market',
-            'USER': 'postgres',
-            'PASSWORD': 'postgres',
-            'HOST': 'localhost',
-            'PORT': 5432,
-            'CONN_MAX_AGE': 5,
-        }
+# if DEBUG:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#             'NAME': 'market',
+#             'USER': 'postgres',
+#             'PASSWORD': 'postgres',
+#             'HOST': 'localhost',
+#             'PORT': 5432,
+#             'CONN_MAX_AGE': 5,
+#         }
+#     }
+# else:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('POSTGRES_NAME'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('DATABASE_HOST'),
+        'PORT': os.getenv('DATABASE_PORT'),
+        'CONN_MAX_AGE': 5,
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': os.getenv('DATABASE_NAME'),
-            'USER': os.getenv('DATABASE_USER'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-            'HOST': os.getenv('DATABASE_HOST'),
-            'PORT': os.getenv('DATABASE_PORT'),
-            'CONN_MAX_AGE': 5,
-        }
-    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -146,6 +146,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, '../staticfiles/static')
+
+MEDIA_URL = 'static/'
+MEDIA_ROOT = os.path.join(BASE_DIR, '../staticfiles/media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
