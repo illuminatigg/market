@@ -25,8 +25,24 @@ SECRET_KEY = os.getenv('KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = [True if os.getenv('DEBUG') == 'True' else False]
 
-ALLOWED_HOSTS = ['31.184.218.182']
+ALLOWED_HOSTS = ['31.184.218.182', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = ['http://31.184.218.182']
+CSRF_COOKIE_SECURE = False
+
+if DEBUG:
+    CORS_ORIGIN_ALLOW_ALL = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    CORS_ORIGIN_ALLOW_ALL = False
+    CORS_ALLOW_CREDENTIALS = False
+
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000',
+]
+CORS_ORIGIN_REGEX_WHITELIST = [
+    'http://localhost:3000',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -44,9 +60,11 @@ INSTALLED_APPS = [
     'drf_yasg',
     'debug_toolbar',
     'rest_framework_simplejwt',
+    'rest_framework.authtoken',
     'djoser',
     'celery',
     'django_celery_beat',
+    'corsheaders',
 
     # apps
     'accounts.apps.AccountsConfig',
@@ -56,6 +74,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -88,30 +107,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 
-# if DEBUG:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#             'NAME': 'market',
-#             'USER': 'postgres',
-#             'PASSWORD': 'postgres',
-#             'HOST': 'localhost',
-#             'PORT': 5432,
-#             'CONN_MAX_AGE': 5,
-#         }
-#     }
-# else:
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('POSTGRES_NAME'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('DATABASE_HOST'),
-        'PORT': os.getenv('DATABASE_PORT'),
-        'CONN_MAX_AGE': 5,
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'market',
+            'USER': 'postgres',
+            'PASSWORD': 'postgres',
+            'HOST': 'localhost',
+            'PORT': 5432,
+            'CONN_MAX_AGE': 5,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': os.getenv('POSTGRES_NAME'),
+            'USER': os.getenv('POSTGRES_USER'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+            'HOST': os.getenv('DATABASE_HOST'),
+            'PORT': os.getenv('DATABASE_PORT'),
+            'CONN_MAX_AGE': 5,
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -146,10 +165,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, '../staticfiles/static')
+STATIC_ROOT = os.path.join(BASE_DIR, '/static')
 
-MEDIA_URL = 'static/'
-MEDIA_ROOT = os.path.join(BASE_DIR, '../staticfiles/media')
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, '/media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -158,10 +177,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-if DEBUG:
-    INTERNAL_IPS = [
-        "127.0.0.1",
-    ]
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+    "localhost"
+]
 
 
 REST_FRAMEWORK = {
@@ -170,4 +190,5 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }

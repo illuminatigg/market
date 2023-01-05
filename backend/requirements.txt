@@ -21,6 +21,7 @@ cryptography==38.0.4
 defusedxml==0.7.1
 Django==4.1.4
 django-celery-beat==2.4.0
+django-cors-headers==3.13.0
 django-filter==22.1
 django-templated-mail==1.1.1
 django-timezone-field==5.0

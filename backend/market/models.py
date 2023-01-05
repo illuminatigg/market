@@ -116,6 +116,24 @@ class ProductModification(models.Model):
         return self.specifications
 
 
+class WholesalePrice(models.Model):
+    modification = models.ForeignKey(
+        ProductModification,
+        on_delete=models.CASCADE,
+        related_name='wholesale_price',
+        verbose_name='Модификация'
+    )
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=30, decimal_places=2)
+
+    class Meta:
+        verbose_name = 'Оптовая цена'
+        verbose_name_plural = 'Оптовые цены'
+
+    def __str__(self):
+        return f'Цена за: {self.quantity}'
+
+
 class Order(models.Model):
     identifier = models.UUIDField(default=uuid4, editable=False, verbose_name='Уникальный идентификатор заказа')
     owner = models.CharField(max_length=255, null=True, db_index=True, verbose_name='Клиент')
@@ -172,4 +190,20 @@ class CartProduct(models.Model):
 
     def __str__(self):
         return self.cart
+
+
+class StartMessage(models.Model):
+    text = models.TextField()
+
+    class Meta:
+        verbose_name = 'Приветственное сообщение'
+        verbose_name_plural = 'Приветственные сообщения'
+
+
+class EndMessage(models.Model):
+    text = models.TextField()
+
+    class Meta:
+        verbose_name = 'Сообщение по окончанию работы'
+        verbose_name_plural = 'Сообщения по окончанию работы'
 

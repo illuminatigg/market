@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication, TokenAuthentication
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, UpdateModelMixin
@@ -49,4 +50,4 @@ class EmployeesAPIView(APIView):
 
     def get(self, request):
         employees = CustomUser.objects.filter(client=False)
-        return
+        return JsonResponse({'employees': employees}, safe=False)

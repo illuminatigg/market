@@ -4,12 +4,40 @@ from .models import Schedule, StoreHouse, Manufacturer, ProductCategory, Product
 # Register your models here.
 
 
-admin.site.register(Schedule)
-admin.site.register(StoreHouse)
-admin.site.register(Manufacturer)
-admin.site.register(ProductCategory)
-admin.site.register(Product)
-admin.site.register(ProductModification)
 admin.site.register(Order)
 admin.site.register(CartProduct)
 admin.site.register(Cart)
+
+
+@admin.register(Schedule)
+class ScheduleAdmin(admin.ModelAdmin):
+    list_display = ['start_time', 'end_time']
+
+
+@admin.register(StoreHouse)
+class StoreHouseAdmin(admin.ModelAdmin):
+    list_display = ['name']
+
+
+@admin.register(Manufacturer)
+class ManufacturerAdmin(admin.ModelAdmin):
+    list_display = ['name', 'available']
+    list_editable = ['available']
+
+
+@admin.register(ProductCategory)
+class ProductCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'available']
+    list_editable = ['available']
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'quantity', 'manufacturer', 'category', 'store_house', 'available']
+    list_editable = ['quantity', 'available']
+
+
+@admin.register(ProductModification)
+class ProductModificationAdmin(admin.ModelAdmin):
+    list_display = ['product', 'specifications', 'price', 'quantity', 'available']
+    list_editable = ['price', 'quantity', 'available']
