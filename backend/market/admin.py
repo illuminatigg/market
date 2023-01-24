@@ -39,5 +39,5 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductModification)
 class ProductModificationAdmin(admin.ModelAdmin):
-    list_display = ['product', 'specifications', 'price', 'quantity', 'available']
-    list_editable = ['price', 'quantity', 'available']
+    list_display = ['product', 'specifications', 'price_rub', 'price_dollar', 'quantity', 'available']
+    list_editable = ['quantity', 'available']

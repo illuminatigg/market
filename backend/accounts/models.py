@@ -8,8 +8,12 @@ from django.db import models
 
 
 class CustomUser(AbstractUser):
-    client = models.BooleanField(default=False, verbose_name='Клиент')
     nickname = models.CharField(max_length=255, null=True, verbose_name='Дополнительное имя')
+    banned = models.BooleanField(default=False, verbose_name='Заблокирован')
+    client = models.BooleanField(default=False, verbose_name='Клиент') # видит весь прайс
+    client_wholesale = models.BooleanField(default=False, verbose_name='Крупно-оптовый клиент') # только купный опт прайс
+    client_small_wholesale = models.BooleanField(default=False, verbose_name='Мелко-оптовый клиент') # только мелкий опт прайс
+    approved = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -37,11 +41,17 @@ class Profile(models.Model):
 
 
 class RegistrationRequest(models.Model):
-    telegram_id = models.CharField(unique=True, max_length=500)
+    telegram_id = models.CharField(max_length=500)
     telegram_username = models.CharField(max_length=255, null=True)
     telegram_phone_number = models.CharField(max_length=15, null=True)
     allow = models.BooleanField(default=False)
     token = models.UUIDField(default=uuid.uuid4(), editable=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    client = models.BooleanField(default=False, verbose_name='Клиент')  # видит весь прайс
+    client_wholesale = models.BooleanField(default=False,
+                                           verbose_name='Крупно-оптовый клиент')  # только купный опт прайс
+    client_small_wholesale = models.BooleanField(default=False,
+                                                 verbose_name='Мелко-оптовый клиент')  # только мелкий опт прайс
 
     class Meta:
         verbose_name = 'Запрос на регистрацию'

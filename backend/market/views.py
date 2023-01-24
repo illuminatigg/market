@@ -1,24 +1,37 @@
-from django.shortcuts import render
+import datetime
+
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.response import Response
 
-from .serializers import ScheduleSerializer
-from .serializers import StoreHouseSerializer
+from accounts.models import CustomUser
+from .filters import ProductFilter
+from .mixins import PermissionsMixin
+from .models import EndMessage, Order, SmallWholesalePrice
+from .models import Manufacturer
+from .models import Product
+from .models import ProductCategory
+from .models import ProductModification
+from .models import Schedule
+from .models import StartMessage
+from .models import StoreHouse
+from .models import WholesalePrice
+from .serializers import EndMessageSerializer, SmallWholesalePriceSerializer
 from .serializers import ManufacturerSerializer
 from .serializers import ProductCategorySerializer
-from .serializers import ProductSerializer
 from .serializers import ProductModificationSerializer
-from .serializers import OrderSerializer
-from .models import StoreHouse
-from .models import Schedule
-from .models import Manufacturer
-from .models import ProductCategory
-from .models import Product
-from .models import ProductModification
-from .models import Order
-from .mixins import PermissionsMixin
+from .serializers import ProductSerializer
+from .serializers import ScheduleSerializer
+from .serializers import StartMessageSerializer
+from .serializers import StoreHouseSerializer
+from .serializers import WholesalePriceSerializer
+
+
+def get_now_time():
+    now = datetime.datetime.now()
+    return now.time()
 
 
 class ScheduleViewSet(ModelViewSet, PermissionsMixin):
@@ -39,7 +52,7 @@ class StoreHouseViewSet(ModelViewSet, PermissionsMixin):
 class ManufacturerViewSet(ModelViewSet, PermissionsMixin):
     """Класс производителя"""
     serializer_class = ManufacturerSerializer
-    queryset = Manufacturer.objects.all()
+    queryset = Manufacturer.objects.all().prefetch_related('products', 'products__modifications')
 
 
 class ProductCategoryViewSet(ModelViewSet, PermissionsMixin):
@@ -51,13 +64,15 @@ class ProductCategoryViewSet(ModelViewSet, PermissionsMixin):
 class ProductViewSet(ModelViewSet, PermissionsMixin):
     """Класс товара"""
     serializer_class = ProductSerializer
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().prefetch_related('modifications')
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
 
 
 class ProductModificationViewSet(ModelViewSet, PermissionsMixin):
     """Класс модификаций товара"""
     serializer_class = ProductModificationSerializer
-    queryset = ProductModification.objects.all()
+    queryset = ProductModification.objects.all().prefetch_related('wholesale_prices')
 
 
 # class OrdersAPIView(APIView, PermissionsMixin):
@@ -66,3 +81,242 @@ class ProductModificationViewSet(ModelViewSet, PermissionsMixin):
 #         orders = Order.objects.filter(status='created').select_related('cart')
 #         return Response()
 
+
+class WholesalePriceViewSet(ModelViewSet, PermissionsMixin):
+    serializer_class = WholesalePriceSerializer
+    queryset = WholesalePrice.objects.all()
+
+
+class SmallWholesalePriceViewSet(ModelViewSet, PermissionsMixin):
+    serializer_class = SmallWholesalePriceSerializer
+    queryset = SmallWholesalePrice.objects.all()
+
+
+class StartMessageViewSet(ModelViewSet, PermissionsMixin):
+    serializer_class = StartMessageSerializer
+    queryset = StartMessage.objects.all()
+
+
+class EndMessageViewSet(ModelViewSet, PermissionsMixin):
+    serializer_class = EndMessageSerializer
+    queryset = EndMessage.objects.all()
+
+
+class StatisticAPIView(APIView, PermissionsMixin):
+
+    def get(self, request):
+        date = datetime.datetime.now().date()
+        yesterday_date = date - datetime.timedelta(days=1)
+        clients = CustomUser.objects.filter(approved=True)
+        orders = Order.objects.all()
+        previous_orders = Order.objects.filter(
+            opened_at=yesterday_date
+        ).prefetch_related('cart', 'cart__products')
+        sold_products_count = 0
+        total = 0
+        for order in previous_orders:
+            total += order.cart.total
+            for product in order.cart.products:
+                sold_products_count += product.quantity
+        payload = {
+            'clients': previous_orders.count(),
+            'orders': previous_orders.count(),
+            'sold': sold_products_count,
+            'total_price': clients.count(),
+            'orders_all': orders.count()
+        }
+        return Response({'statistic': payload}, status=status.HTTP_200_OK)
+
+# class MarketManufacturersAll(APIView):
+#     permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             manufacturers = Manufacturer.objects.all()
+#             serializer = ManufacturerSerializer(manufacturers, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# class MarketProductsByManufacturer(APIView):
+#     # permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             products = Product.objects.filter(
+#                 manufacturer__name=request.data['manufacturer']
+#             ).select_related('manufacturer', 'category', 'store_house').prefetch_related(
+#                 'modifications')
+#             serializer = ClientProductSerializer(products, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# class MarketFilteredProducts(APIView):
+#     # permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             name = request.data['product_name']
+#             products = Product.objects.filter(
+#                 manufacturer__name=name
+#             ).select_related('manufacturer', 'category', 'store_house').prefetch_related('modifications')
+#             serializer = ClientProductSerializer(products, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# class MarketProductCategoryAll(APIView):
+#     # permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             categories = ProductCategory.objects.all()
+#             print(len(categories))
+#             serializer = ClientProductCategorySerializer(categories, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# # class ClientCart(APIView):
+# #     permission_classes = [ClientPermission]
+# #
+# #     def post(self, request):
+# #         allowed = work_time(get_now_time())
+# #         print(allowed)
+# #         if allowed:
+# #             client_cart, created = Cart.objects.get_or_create(
+# #                 owner=request.data.get('telegram_id'),
+# #                 created_at=datetime.datetime.now().date()
+# #             )
+# #             if created:
+# #                 new_order = Order.objects.create(owner=request.data.get('telegram_id'))
+# #                 client_cart.order = new_order
+# #                 client_cart.save()
+# #                 return Response({'id': client_cart.id}, status=status.HTTP_201_CREATED)
+# #             return Response({'id': client_cart.id}, status=status.HTTP_200_OK)
+# #         else:
+# #             return Response(
+# #                 {'message': f'В данный момент времени заказы не принимаются'},
+# #                 status=status.HTTP_400_BAD_REQUEST
+# #             )
+#
+#
+# class MarketModificationByProduct(APIView):
+#     permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             categories = ProductModification.objects.filter(
+#                 product__name=request.data['product']
+#             )
+#             serializer = ClientProductModificationSerializer(categories, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# # class MarketAddProductsToCart(APIView):
+# #     permission_classes = [ClientPermission]
+# #
+# #     def post(self, request):
+# #         cart = Cart.objects.get(owner=request.data.get('telegram_id'))
+# #         products = request.data.get('products_to_cart')
+# #         for product in products:
+# #             CartProduct.objects.create(
+# #                 cart=cart,
+# #                 product=product.id,
+# #                 price=product.price
+# #             )
+# #
+#
+#
+# from .serializers import BotManufacturerSerializer, BotProductSerializer, BotModificationSerializer
+#
+#
+# class BotMarketView(APIView):
+#     permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             if request.data.get('return_manufacturers'):
+#                 manufacturers = Manufacturer.objects.all()
+#                 serializer = BotManufacturerSerializer(manufacturers, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#             elif request.data.get('return_product'):
+#                 products = Product.objects.filter(
+#                     manufacturer__name=request.data.get('manufacturer_name')
+#                 )
+#                 serializer = BotProductSerializer(products, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#             elif request.data.get('return_modification'):
+#                 modifications = ProductModification.objects.filter(
+#                     product__name=request.data.get('product_name')
+#                 )
+#                 serializer = BotModificationSerializer(modifications, many=True)
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#
+# class BotCartView(APIView):
+#     permission_classes = [ClientPermission]
+#
+#     def get(self, request):
+#         allowed = work_time(get_now_time())
+#         if allowed:
+#             client_cart, created = Cart.objects.get_or_create(
+#                 owner=request.data.get('telegram_id'),
+#                 created_at=datetime.datetime.now().date()
+#             )
+#             if created:
+#                 new_order = Order.objects.create(owner=request.data.get('telegram_id'))
+#                 client_cart.order = new_order
+#                 client_cart.save()
+#                 return Response({'id': client_cart.id}, status=status.HTTP_201_CREATED)
+#             return Response({'id': client_cart.id}, status=status.HTTP_200_OK)
+#
+#         else:
+#             return Response(
+#                 {'message': f'В данный момент времени заказы не принимаются'},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#     def put(self, request, pk, format=None):
+#         cart = Cart.objects.get(id=pk)
+#         product_modification = ProductModification.objects.get(id=request.data.get('product_modification_id'))
+#         cart_product = CartProduct.objects.create(
+#             cart=cart,
+#             product=product_modification,
+#             price=request.data.get('product_modification_price'),
+#             quantity=request.data.get('quantity')
+#         )
+#

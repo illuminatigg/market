@@ -2,16 +2,17 @@ from uuid import uuid4
 
 from django.db import models
 
+from config.labels import FLAGS
 
 # Create your models here.
 
 
 ORDER_STATUS = (
-        ('opened', 'Открыт'),
-        ('created', 'Создан'),
-        ('in_processing', 'В обработке'),
-        ('delivered', 'Доставлен')
-    )
+    ('opened', 'Открыт'),
+    ('created', 'Создан'),
+    ('in_processing', 'В обработке'),
+    ('delivered', 'Доставлен')
+)
 
 
 class Schedule(models.Model):
@@ -63,7 +64,8 @@ class ProductCategory(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=500, null=True, db_index=True, verbose_name='Наименование')
-    quantity = models.PositiveBigIntegerField(default=0, verbose_name='Остаток')
+    quantity = models.IntegerField(default=0, verbose_name='Остаток')
+    start_quantity = models.IntegerField(default=0, verbose_name='Изначальное колличество')
     manufacturer = models.ForeignKey(
         Manufacturer,
         on_delete=models.CASCADE,
@@ -94,6 +96,13 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        try:
+            self.start_quantity = self.quantity
+            super().save(*args, **kwargs)
+        except Exception as ex:
+            super().save(*args, **kwargs)
+
 
 class ProductModification(models.Model):
     product = models.ForeignKey(
@@ -104,9 +113,13 @@ class ProductModification(models.Model):
         verbose_name='Товар'
     )
     specifications = models.CharField(max_length=500, null=True, verbose_name='Характеристики')
-    price = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость')
+    price_rub = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость за штутку')
+    price_dollar = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость за штутку')
     quantity = models.PositiveBigIntegerField(default=0, verbose_name='Остаток')
+    start_quantity = models.IntegerField(default=0, verbose_name='Изначальное колличество')
     available = models.BooleanField(default=True, verbose_name='Доступен')
+    available_for_wholesale = models.BooleanField(default=True, verbose_name='Доступен для опта')
+    available_for_small_wholesale = models.BooleanField(default=True, verbose_name='Доступен для мелкого опта')
 
     class Meta:
         verbose_name = 'Модификация'
@@ -115,12 +128,22 @@ class ProductModification(models.Model):
     def __str__(self):
         return self.specifications
 
+    def save(self, *args, **kwargs):
+        try:
+            country = self.specifications
+            country = country.replace(country[-2:], FLAGS[country[-2:].upper()])
+            self.specifications = country
+            self.start_quantity = self.quantity
+            super().save(*args, **kwargs)
+        except Exception as ex:
+            super().save(*args, **kwargs)
+
 
 class WholesalePrice(models.Model):
     modification = models.ForeignKey(
         ProductModification,
         on_delete=models.CASCADE,
-        related_name='wholesale_price',
+        related_name='wholesale_prices',
         verbose_name='Модификация'
     )
     quantity = models.IntegerField()
@@ -134,12 +157,31 @@ class WholesalePrice(models.Model):
         return f'Цена за: {self.quantity}'
 
 
+class SmallWholesalePrice(models.Model):
+    modification = models.ForeignKey(
+        ProductModification,
+        on_delete=models.CASCADE,
+        related_name='small_wholesale_prices',
+        verbose_name='Модификация'
+    )
+    quantity = models.IntegerField()
+    price = models.DecimalField(max_digits=30, decimal_places=2)
+
+    class Meta:
+        verbose_name = 'Мелко-оптовая цена'
+        verbose_name_plural = 'Мелко-оптовые цены'
+
+    def __str__(self):
+        return f'Цена за: {self.quantity}'
+
+
 class Order(models.Model):
     identifier = models.UUIDField(default=uuid4, editable=False, verbose_name='Уникальный идентификатор заказа')
     owner = models.CharField(max_length=255, null=True, db_index=True, verbose_name='Клиент')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
     status = models.CharField(max_length=50, choices=ORDER_STATUS, default='opened')
     delivered_at = models.DateTimeField(null=True)
+    opened_at = models.DateField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -159,9 +201,9 @@ class Cart(models.Model):
         verbose_name='Заказ'
     )
     owner = models.CharField(max_length=255, null=True)
-    total = models.DecimalField(max_digits=30, decimal_places=2, null=True, verbose_name='Сумма')
+    total = models.DecimalField(max_digits=30, decimal_places=2, null=True, verbose_name='Сумма', default=0.00)
     done = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Корзина'
@@ -182,14 +224,15 @@ class CartProduct(models.Model):
         ProductModification,
         on_delete=models.CASCADE,
     )
-    price = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость')
+    price = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость', default=0.00)
+    quantity = models.IntegerField(default=0)
 
     class Meta:
         verbose_name = 'Товар для корзины'
         verbose_name_plural = 'Товары для корзины'
 
     def __str__(self):
-        return self.cart
+        return self.product.specifications
 
 
 class StartMessage(models.Model):
@@ -206,4 +249,3 @@ class EndMessage(models.Model):
     class Meta:
         verbose_name = 'Сообщение по окончанию работы'
         verbose_name_plural = 'Сообщения по окончанию работы'
-

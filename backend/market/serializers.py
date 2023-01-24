@@ -1,7 +1,6 @@
-
 from rest_framework import serializers
 
-from .models import Schedule, ORDER_STATUS
+from .models import Schedule, ORDER_STATUS, SmallWholesalePrice
 from .models import StoreHouse
 from .models import Manufacturer
 from .models import ProductCategory
@@ -10,6 +9,9 @@ from .models import ProductModification
 from .models import Order
 from .models import Cart
 from .models import CartProduct
+from .models import WholesalePrice
+from .models import StartMessage
+from .models import EndMessage
 
 
 class ScheduleSerializer(serializers.ModelSerializer):
@@ -31,10 +33,11 @@ class StoreHouseSerializer(serializers.ModelSerializer):
 
 class ManufacturerSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=255)
+    available = serializers.BooleanField()
 
     class Meta:
         model = Manufacturer
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'available']
 
 
 class ProductCategorySerializer(serializers.ModelSerializer):
@@ -46,9 +49,61 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'products']
 
 
+class WholesalePriceSerializer(serializers.ModelSerializer):
+    modification = serializers.PrimaryKeyRelatedField(queryset=ProductModification.objects.all())
+    quantity = serializers.IntegerField()
+    price = serializers.DecimalField(max_digits=30, decimal_places=2)
+
+    class Meta:
+        model = WholesalePrice
+        fields = ['id', 'modification', 'quantity', 'price']
+
+
+class SmallWholesalePriceSerializer(serializers.ModelSerializer):
+    modification = serializers.PrimaryKeyRelatedField(queryset=ProductModification.objects.all())
+    quantity = serializers.IntegerField()
+    price = serializers.DecimalField(max_digits=30, decimal_places=2)
+
+    class Meta:
+        model = SmallWholesalePrice
+        fields = ['id', 'modification', 'quantity', 'price']
+
+
+class ProductModificationSerializer(serializers.ModelSerializer):
+    product = serializers.CharField(read_only=True)
+    specifications = serializers.CharField(max_length=500)
+    price_rub = serializers.DecimalField(max_digits=20, decimal_places=2)
+    price_dollar = serializers.DecimalField(max_digits=20, decimal_places=2)
+    quantity = serializers.IntegerField()
+    start_quantity = serializers.CharField(read_only=True)
+    available = serializers.BooleanField()
+    available_for_wholesale = serializers.BooleanField()
+    available_for_small_wholesale = serializers.BooleanField()
+    wholesale_prices = WholesalePriceSerializer(many=True)
+    small_wholesale_prices = SmallWholesalePriceSerializer(many=True)
+
+    class Meta:
+        model = ProductModification
+        fields = [
+            'id',
+            'product',
+            'specifications',
+            'price_rub',
+            'price_dollar',
+            'start_quantity',
+            'quantity',
+            'available',
+            'available_for_wholesale',
+            'available_for_small_wholesale',
+            'wholesale_prices',
+            'small_wholesale_prices',
+        ]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=500)
     quantity = serializers.IntegerField()
+    start_quantity = serializers.CharField(read_only=True)
     manufacturer = serializers.PrimaryKeyRelatedField(
         queryset=Manufacturer.objects.all(),
         allow_null=True,
@@ -65,22 +120,11 @@ class ProductSerializer(serializers.ModelSerializer):
         required=False
     )
     available = serializers.BooleanField()
+    modifications = ProductModificationSerializer(many=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'quantity', 'manufacturer', 'category', 'store_house', 'available']
-
-
-class ProductModificationSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=ProductModification.objects.all())
-    specifications = serializers.CharField(max_length=500)
-    price = serializers.DecimalField(max_digits=20, decimal_places=2)
-    quantity = serializers.IntegerField()
-    available = serializers.BooleanField()
-
-    class Meta:
-        model = ProductModification
-        fields = ['id', 'product', 'specifications', 'price', 'quantity', 'available']
+        fields = ['id', 'name', 'quantity', 'start_quantity', 'manufacturer', 'category', 'store_house', 'available', 'modifications']
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -116,5 +160,40 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'identifier', 'owner', 'created_at', 'status', 'delivered_at']
+
+
+class StartMessageSerializer(serializers.ModelSerializer):
+    text = serializers.CharField()
+
+    class Meta:
+        model = StartMessage
+        fields = ['text']
+
+
+class EndMessageSerializer(serializers.ModelSerializer):
+    text = serializers.CharField()
+
+    class Meta:
+        model = EndMessage
+        fields = ['text']
+
+
+class BotManufacturerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Manufacturer
+        fields = ['id', 'name']
+
+
+class BotProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'quantity']
+
+
+class BotModificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductModification
+        fields = ['id', 'specifications', 'price', 'quantity']
+
 
 

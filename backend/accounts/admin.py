@@ -6,7 +6,7 @@ from .models import CustomUser, Profile, RegistrationRequest
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ['username', 'client', 'nickname']
+    list_display = ['username', 'client', 'client_wholesale', 'client_small_wholesale', 'nickname']
     list_editable = ['nickname']
 
 

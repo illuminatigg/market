@@ -12,7 +12,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
+from aiogram import Bot, Dispatcher
+from pydantic import BaseSettings, SecretStr
 
+# BACKEND SETTINGS
+# _________________________________________________________________________
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv('../settings/.env')
@@ -20,7 +25,7 @@ load_dotenv('../settings/.env')
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('KEY')
+SECRET_KEY = 'django-insecure-329_9$p$95q-h6u6dk9i5viep%(ku32-@kyi4%&)-32nyx9x42' #os.getenv('KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = [True if os.getenv('DEBUG') == 'True' else False]
@@ -177,12 +182,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-
 INTERNAL_IPS = [
     "127.0.0.1",
     "localhost"
 ]
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -190,5 +193,29 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100
 }
+# ______________________________________________________________________________________
+
+
+# CLIENT SETTINGS
+# _______________________________________________________________________________________
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+logging.basicConfig(level=logging.INFO)
+
+
+class Settings(BaseSettings):
+    bot_token: SecretStr
+
+    class Config:
+        env_file = '../../settings/.env'
+        env_file_encoding = 'utf-8'
+
+
+storage: MemoryStorage = MemoryStorage()
+BOT_SETTINGS = Settings()
+BOT = Bot(token=BOT_SETTINGS.bot_token.get_secret_value())
+DISPATCHER = Dispatcher(BOT, storage=storage)
