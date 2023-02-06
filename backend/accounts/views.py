@@ -59,6 +59,7 @@ class AllowRegistrationRequestsUpdateAPIView(GenericViewSet, ListModelMixin, Upd
     authentication_classes = [TokenAuthentication, BasicAuthentication, SessionAuthentication]
 
 
+
 class EmployeeRegistrationAPIView(APIView):
     """Метод создания персонала"""
     permission_classes = [AllowAny]
@@ -108,4 +109,4 @@ class ClientsViewSet(GenericViewSet, ListModelMixin, UpdateModelMixin, RetrieveM
     permission_classes = [AllowAny]
     authentication_classes = [TokenAuthentication, BasicAuthentication, SessionAuthentication]
     serializer_class = ClientSerializer
-    queryset = CustomUser.objects.filter(client=True)
+    queryset = CustomUser.objects.filter(approved=True)

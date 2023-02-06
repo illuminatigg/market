@@ -8,4 +8,3 @@ RUN pip3 install --upgrade pip && pip3 install gunicorn
 RUN apt-get -y install nano
 ADD . .
 RUN pip install -r requirements.txt
-ENTRYPOINT ["bash", "./docker-entrypoint.sh"]

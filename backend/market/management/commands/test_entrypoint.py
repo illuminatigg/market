@@ -97,3 +97,21 @@ class Command(BaseCommand):
         self.apple_create(store_house=created_store_house)
         self.samsung_create(store_house=created_store_house)
         self.xiaomi_create(store_house=created_store_house)
+        product_modifications = ProductModification.objects.all()
+        for product in product_modifications:
+            WholesalePrice.objects.create(modification=product, quantity_from=10, quantity_to=20, price=randint(20000, 100000))
+            WholesalePrice.objects.create(modification=product, quantity_from=20, quantity_to=30, price=randint(20000, 100000))
+            WholesalePrice.objects.create(modification=product, quantity_from=30, quantity_to=40, price=randint(20000, 100000))
+            WholesalePrice.objects.create(modification=product, quantity_from=40, quantity_to=50, price=randint(20000, 100000))
+            WholesalePrice.objects.create(modification=product, quantity_from=50, quantity_to=60, price=randint(20000, 100000))
+            WholesalePrice.objects.create(modification=product, quantity_from=60, quantity_to=70, price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=10, quantity_to=20, price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=20, quantity_to=30, price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=30, quantity_to=40, price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=40, quantity_to=50,
+                                               price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=50, quantity_to=60,
+                                               price=randint(20000, 100000))
+            SmallWholesalePrice.objects.create(modification=product, quantity_from=60, quantity_to=70,
+                                               price=randint(20000, 100000))
+        Schedule.objects.create(start_time='09:00', end_time='15:00')

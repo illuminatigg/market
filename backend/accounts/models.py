@@ -9,6 +9,7 @@ from django.db import models
 
 class CustomUser(AbstractUser):
     nickname = models.CharField(max_length=255, null=True, verbose_name='Дополнительное имя')
+    organization = models.CharField(max_length=255, null=True, verbose_name='Организация')
     banned = models.BooleanField(default=False, verbose_name='Заблокирован')
     client = models.BooleanField(default=False, verbose_name='Клиент') # видит весь прайс
     client_wholesale = models.BooleanField(default=False, verbose_name='Крупно-оптовый клиент') # только купный опт прайс

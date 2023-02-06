@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 from django.db import models
+from django_celery_beat.models import CrontabSchedule, PeriodicTask
 
 from config.labels import FLAGS
+
 
 # Create your models here.
 
@@ -22,6 +24,25 @@ class Schedule(models.Model):
     class Meta:
         verbose_name = 'График работы'
         verbose_name_plural = 'Графики работы'
+
+    # def save(self, *args, **kwargs):
+    #     try:
+    #         schedule, created = CrontabSchedule.objects.get_or_create(
+    #             hour=str(self.end_time.hour),
+    #             minute=str(self.end_time.minute),
+    #             day_of_week='*',
+    #             day_of_month='*',
+    #             month_of_year='*',
+    #             timezone='Europe/Moscow'
+    #         )
+    #         PeriodicTask.objects.create(
+    #             crontab=schedule,
+    #             name='Send end time report',
+    #             task='market.tasks.send_report'
+    #         )
+    #         super().save(*args, **kwargs)
+    #     except Exception as ex:
+    #         super().save(*args, **kwargs)
 
     def __str__(self):
         return f'Бот работает с: {self.start_time} до: {self.end_time}'
@@ -146,7 +167,8 @@ class WholesalePrice(models.Model):
         related_name='wholesale_prices',
         verbose_name='Модификация'
     )
-    quantity = models.IntegerField()
+    quantity_from = models.IntegerField()
+    quantity_to = models.IntegerField()
     price = models.DecimalField(max_digits=30, decimal_places=2)
 
     class Meta:
@@ -154,7 +176,7 @@ class WholesalePrice(models.Model):
         verbose_name_plural = 'Оптовые цены'
 
     def __str__(self):
-        return f'Цена за: {self.quantity}'
+        return f'Цена за колличество от {self.quantity_from} до {self.quantity_to}'
 
 
 class SmallWholesalePrice(models.Model):
@@ -164,7 +186,8 @@ class SmallWholesalePrice(models.Model):
         related_name='small_wholesale_prices',
         verbose_name='Модификация'
     )
-    quantity = models.IntegerField()
+    quantity_from = models.IntegerField()
+    quantity_to = models.IntegerField()
     price = models.DecimalField(max_digits=30, decimal_places=2)
 
     class Meta:
@@ -172,7 +195,7 @@ class SmallWholesalePrice(models.Model):
         verbose_name_plural = 'Мелко-оптовые цены'
 
     def __str__(self):
-        return f'Цена за: {self.quantity}'
+        return f'Цена за колличество от {self.quantity_from} до {self.quantity_to}'
 
 
 class Order(models.Model):
@@ -223,6 +246,7 @@ class CartProduct(models.Model):
     product = models.ForeignKey(
         ProductModification,
         on_delete=models.CASCADE,
+        related_name='cartproduct'
     )
     price = models.DecimalField(max_digits=20, decimal_places=2, null=True, verbose_name='Стоимость', default=0.00)
     quantity = models.IntegerField(default=0)
@@ -249,3 +273,21 @@ class EndMessage(models.Model):
     class Meta:
         verbose_name = 'Сообщение по окончанию работы'
         verbose_name_plural = 'Сообщения по окончанию работы'
+
+
+class HelpRules(models.Model):
+    text = models.TextField()
+
+    class Meta:
+        verbose_name = 'Правила'
+        verbose_name_plural = 'Правила'
+
+
+class ProductsUploadFile(models.Model):
+    file = models.FileField(max_length=500, upload_to='files/')
+    uploaded = models.DateTimeField(auto_now_add=True)
+
+
+class ReportFile(models.Model):
+    file = models.FileField(max_length=500, upload_to='reports/')
+    created_at = models.DateTimeField(auto_now_add=True)

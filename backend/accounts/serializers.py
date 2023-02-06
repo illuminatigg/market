@@ -1,5 +1,16 @@
+import asyncio
+
 from rest_framework import serializers
 from .models import CustomUser, Profile, RegistrationRequest
+from config.settings import BOT
+
+
+async def send_approve_message(customer):
+    if customer.approved:
+        await BOT.send_message(customer.username,
+                               'Доброго времени суток. Ваша регистрация подтверждена, доступ к магазину открыт.')
+    else:
+        await BOT.send_message(customer.username, 'Ваш запрос на регистрацию не подтвержден. Обратитесь к оператору')
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -36,13 +47,16 @@ class ClientTgProfileSerializer(serializers.ModelSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=255, required=True)
     nickname = serializers.CharField(max_length=255, required=False)
-    banned = serializers.BooleanField()
-    is_active = serializers.BooleanField()
+    organization = serializers.CharField(read_only=True)
+    client_wholesale = serializers.BooleanField(required=False)
+    client_small_wholesale = serializers.BooleanField(required=False)
+    banned = serializers.BooleanField(required=False)
+    is_active = serializers.BooleanField(required=False)
     profiles = ClientTgProfileSerializer(many=False)
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'nickname', 'banned', 'is_active', 'profiles']
+        fields = ['id', 'username', 'nickname', 'organization', 'banned', 'is_active', 'profiles', 'client_wholesale', 'client_small_wholesale']
 
 
 class ClientRegistrationRequestSerializer(serializers.ModelSerializer):
@@ -81,10 +95,10 @@ class ApproveRegistrationRequestsSerializer(serializers.ModelSerializer):
     telegram_id = serializers.CharField(read_only=True, required=False)
     telegram_username = serializers.CharField(read_only=True, required=False)
     telegram_phone_number = serializers.CharField(read_only=True, required=False, allow_null=True)
-    allow = serializers.BooleanField()
-    client = serializers.BooleanField()
-    client_wholesale = serializers.BooleanField()
-    client_small_wholesale = serializers.BooleanField()
+    allow = serializers.BooleanField(required=False)
+    client = serializers.BooleanField(required=False)
+    client_wholesale = serializers.BooleanField(required=False)
+    client_small_wholesale = serializers.BooleanField(required=False)
 
     class Meta:
         model = RegistrationRequest
@@ -107,7 +121,9 @@ class ApproveRegistrationRequestsSerializer(serializers.ModelSerializer):
         customer.client = validated_data['client']
         customer.client_wholesale = validated_data['client_wholesale']
         customer.client_small_wholesale = validated_data['client_small_wholesale']
+        customer.approved = instance.allow
         customer.save()
+        asyncio.run(send_approve_message(customer))
         return instance
 
 

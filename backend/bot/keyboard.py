@@ -7,7 +7,6 @@ async def set_main_menu(dispatcher: Dispatcher):
     commands: list[BotCommand] = [
         BotCommand(command='market', description='Маркет'),
         BotCommand(command='personal_area', description='Личный кабинет'),
-        BotCommand(command='help', description='Помощь')
     ]
     await dispatcher.bot.set_my_commands(commands)
 

@@ -170,10 +170,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, '/static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, '/media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -197,6 +197,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100
 }
+
+broker_url = 'amqp://guest:guest@localhost:5672/'
+
+CELERY_BROKER_URL = broker_url
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
 # ______________________________________________________________________________________
 
 
@@ -219,3 +225,6 @@ storage: MemoryStorage = MemoryStorage()
 BOT_SETTINGS = Settings()
 BOT = Bot(token=BOT_SETTINGS.bot_token.get_secret_value())
 DISPATCHER = Dispatcher(BOT, storage=storage)
+
+# SERVICES
+# ______________________________________________________________________________________

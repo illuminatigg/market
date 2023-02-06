@@ -1,15 +1,24 @@
 import datetime
+import os
+from io import BytesIO
+from pathlib import Path
 
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import UploadedFile
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
+from django.core.files.storage import FileSystemStorage, default_storage
+import pandas as pd
+from django.core.files import File
 
 from accounts.models import CustomUser
+from config.settings import MEDIA_ROOT
 from .filters import ProductFilter
 from .mixins import PermissionsMixin
-from .models import EndMessage, Order, SmallWholesalePrice
+from .models import EndMessage, Order, SmallWholesalePrice, ProductsUploadFile, HelpRules, ReportFile
 from .models import Manufacturer
 from .models import Product
 from .models import ProductCategory
@@ -18,7 +27,8 @@ from .models import Schedule
 from .models import StartMessage
 from .models import StoreHouse
 from .models import WholesalePrice
-from .serializers import EndMessageSerializer, SmallWholesalePriceSerializer
+from .serializers import EndMessageSerializer, SmallWholesalePriceSerializer, FileSerializer, HelpRulesSerializer, \
+    ReportFileSerializer, OrderSerializer
 from .serializers import ManufacturerSerializer
 from .serializers import ProductCategorySerializer
 from .serializers import ProductModificationSerializer
@@ -27,6 +37,7 @@ from .serializers import ScheduleSerializer
 from .serializers import StartMessageSerializer
 from .serializers import StoreHouseSerializer
 from .serializers import WholesalePriceSerializer
+from .tasks import excel_to_db
 
 
 def get_now_time():
@@ -102,6 +113,11 @@ class EndMessageViewSet(ModelViewSet, PermissionsMixin):
     queryset = EndMessage.objects.all()
 
 
+class HelpMessageViewSet(ModelViewSet, PermissionsMixin):
+    serializer_class = HelpRulesSerializer
+    queryset = HelpRules.objects.all()
+
+
 class StatisticAPIView(APIView, PermissionsMixin):
 
     def get(self, request):
@@ -127,6 +143,76 @@ class StatisticAPIView(APIView, PermissionsMixin):
         }
         return Response({'statistic': payload}, status=status.HTTP_200_OK)
 
+
+class FileLoader(APIView, PermissionsMixin):
+
+    def post(self, request):
+        file = ProductsUploadFile.objects.create(file=request.FILES['file'])
+        excel_to_db.delay(file.file.path, file.id)
+        return Response('saved', status=status.HTTP_201_CREATED)
+
+
+class DeleteAllProducts(APIView, PermissionsMixin):
+
+    def get(self, request):
+        try:
+            Manufacturer.objects.all().delete()
+            return Response('Все продукты успешно удалены.', status=status.HTTP_200_OK)
+        except Exception as ex:
+            return Response(f'Что то пошло не так: {ex}', status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReportFileView(APIView, PermissionsMixin):
+
+    def get(self, request):
+        fields = {
+            'Товар': [],
+            'Колличество': [],
+            'Стоимость': [],
+            'Общая сумма': [],
+            'Дата создания заказа': [],
+            'Номер заказа': [],
+            'Клиент': []
+        }
+        orders = Order.objects.all().prefetch_related('cart', 'cart__products', 'cart__products__product') # добавить фильтрацию по статусу
+        user = CustomUser.objects.all().prefetch_related('profiles')
+        file_name = f'report {datetime.date.today().strftime("%d-%m-%Y")}.xlsx'
+        for order in orders:
+            try:
+                owner = user.get(username=order.owner)
+            except Exception as ex:
+                print(ex)
+                continue
+
+            for index, prod in enumerate(order.cart.products.all()):
+                fields['Товар'].append(prod.product.specifications)
+                fields['Колличество'].append(prod.quantity)
+                fields['Стоимость'].append(prod.price)
+                fields['Общая сумма'].append(order.cart.total if index == 0 else ' ')
+                fields['Дата создания заказа'].append(datetime.datetime.now() if index == 0 else ' ')
+                fields['Номер заказа'].append(order.identifier if index == 0 else ' ')
+                fields['Клиент'].append(owner.nickname if owner.nickname else owner.profiles.telegram_username)
+
+        file_path = os.path.join(MEDIA_ROOT, file_name)
+        dataframe = pd.DataFrame(fields)
+        dataframe.to_excel(file_path, sheet_name=file_name, index=False)
+        report_file = ReportFile()
+        with open(file_path, 'rb') as f:
+            report_file.file.save(file_name, File(f))
+            report_file.save()
+        os.remove(file_path)
+        serializer = ReportFileSerializer(report_file)
+        return Response(serializer.data)
+
+
+class OpenedOrdersView(APIView, PermissionsMixin):
+
+    def get(self, request):
+        orders = Order.objects.filter(status='opened').prefetch_related('cart', 'cart__products', 'cart__products__product')
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 # class MarketManufacturersAll(APIView):
 #     permission_classes = [ClientPermission]
 #
@@ -147,7 +233,6 @@ class StatisticAPIView(APIView, PermissionsMixin):
 #     # permission_classes = [ClientPermission]
 #
 #     def get(self, request):
-#         allowed = work_time(get_now_time())
 #         if allowed:
 #             products = Product.objects.filter(
 #                 manufacturer__name=request.data['manufacturer']

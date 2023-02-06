@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      dockerfile: ./Dockerfile
+    env_file:
+      - ../settings/.env
+    depends_on:
+      - db
+    command: bash docker-entrypoint.sh
+    volumes:
+      - ../backend:/opt/market/
+      - ../staticfiles/static:/opt/market/static
+      - ../staticfiles/media:/opt/market/media
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+    networks:
+      - market_network
+    restart: always
+
+  bot:
+    build:
+      dockerfile: ./Dockerfile
+    env_file:
+      - ../settings/.env
+    command:
+      - bash -c "python manage.py bot_run"
+    depends_on:
+      - db
+      - web
+    volumes:
+      - ../backend:/opt/market/
+      - ../staticfiles/static:/opt/market/static
+      - ../staticfiles/media:/opt/market/media
+    networks:
+      - market_network
+    restart: always
+
+  file_uploader:
+    build:
+      dockerfile: ./Dockerfile
+    env_file:
+      - ../settings/.env
+    command: celery -A config worker --loglevel=INFO
+    depends_on:
+      - db
+      - web
+    volumes:
+      - ../backend:/opt/market/
+      - ../staticfiles/static:/opt/market/static
+      - ../staticfiles/media:/opt/market/media
+    networks:
+      - market_network
+    restart: always
+
+  rabbit:
+    image: rabbitmq:3
+    networks:
+      - market_network
+    restart: "always"
+
+  db:
+    image: postgres:14.3-alpine
+    volumes:
+      - ../deploy/dbdata:/var/lib/postgresql/data
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+    networks:
+      - market_network
+    env_file:
+      - ../settings/.env
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ../staticfiles/static:/static
+      - ../staticfiles/media:/media
+    ports:
+      - "8001:80"
+      - "443:443"
+    networks:
+      - market_network
+    depends_on:
+      - web
+    restart: always
+
+networks:
+  market_network:
+    driver: bridge
+    external:
+      name: market_network

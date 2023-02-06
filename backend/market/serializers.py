@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Schedule, ORDER_STATUS, SmallWholesalePrice
+from .models import Schedule, ORDER_STATUS, SmallWholesalePrice, ProductsUploadFile, HelpRules, ReportFile
 from .models import StoreHouse
 from .models import Manufacturer
 from .models import ProductCategory
@@ -51,26 +51,27 @@ class ProductCategorySerializer(serializers.ModelSerializer):
 
 class WholesalePriceSerializer(serializers.ModelSerializer):
     modification = serializers.PrimaryKeyRelatedField(queryset=ProductModification.objects.all())
-    quantity = serializers.IntegerField()
+    quantity_from = serializers.IntegerField()
+    quantity_to = serializers.IntegerField()
     price = serializers.DecimalField(max_digits=30, decimal_places=2)
 
     class Meta:
         model = WholesalePrice
-        fields = ['id', 'modification', 'quantity', 'price']
+        fields = ['id', 'modification', 'quantity_from', 'quantity_to', 'price']
 
 
 class SmallWholesalePriceSerializer(serializers.ModelSerializer):
     modification = serializers.PrimaryKeyRelatedField(queryset=ProductModification.objects.all())
-    quantity = serializers.IntegerField()
+    quantity_from = serializers.IntegerField()
+    quantity_to = serializers.IntegerField()
     price = serializers.DecimalField(max_digits=30, decimal_places=2)
 
     class Meta:
         model = SmallWholesalePrice
-        fields = ['id', 'modification', 'quantity', 'price']
+        fields = ['id', 'modification', 'quantity_from', 'quantity_to', 'price']
 
 
 class ProductModificationSerializer(serializers.ModelSerializer):
-    product = serializers.CharField(read_only=True)
     specifications = serializers.CharField(max_length=500)
     price_rub = serializers.DecimalField(max_digits=20, decimal_places=2)
     price_dollar = serializers.DecimalField(max_digits=20, decimal_places=2)
@@ -79,8 +80,8 @@ class ProductModificationSerializer(serializers.ModelSerializer):
     available = serializers.BooleanField()
     available_for_wholesale = serializers.BooleanField()
     available_for_small_wholesale = serializers.BooleanField()
-    wholesale_prices = WholesalePriceSerializer(many=True)
-    small_wholesale_prices = SmallWholesalePriceSerializer(many=True)
+    wholesale_prices = WholesalePriceSerializer(many=True, required=False, read_only=True)
+    small_wholesale_prices = SmallWholesalePriceSerializer(many=True, required=False, read_only=True)
 
     class Meta:
         model = ProductModification
@@ -102,8 +103,8 @@ class ProductModificationSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=500)
-    quantity = serializers.IntegerField()
-    start_quantity = serializers.CharField(read_only=True)
+    quantity = serializers.IntegerField(required=False)
+    start_quantity = serializers.CharField(read_only=True, required=False)
     manufacturer = serializers.PrimaryKeyRelatedField(
         queryset=Manufacturer.objects.all(),
         allow_null=True,
@@ -120,33 +121,29 @@ class ProductSerializer(serializers.ModelSerializer):
         required=False
     )
     available = serializers.BooleanField()
-    modifications = ProductModificationSerializer(many=True)
+    modifications = ProductModificationSerializer(many=True, required=False)
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'quantity', 'start_quantity', 'manufacturer', 'category', 'store_house', 'available', 'modifications']
 
 
+class CartProductSerializer(serializers.ModelSerializer):
+    product = serializers.CharField(source='product.specifications')
+    class Meta:
+        model = CartProduct
+        fields = ['product', 'price', 'quantity']
+
+
 class CartSerializer(serializers.ModelSerializer):
-    order = serializers.PrimaryKeyRelatedField(read_only=True)
-    owner = serializers.CharField(read_only=True)
     total = serializers.DecimalField(max_digits=20, decimal_places=2, read_only=True)
     done = serializers.BooleanField(read_only=True)
-    created_at = serializers.DateTimeField(read_only=True)
-    products = serializers.StringRelatedField(many=True)
+    created_at = serializers.DateField(read_only=True)
+    products = CartProductSerializer(many=True)
 
     class Meta:
         model = Cart
-        fields = ['id', 'order', 'owner', 'products', 'total', 'done', 'created_at']
-
-    def create(self, validated_data):
-        username = self.context['request'].user.username
-        new_order = Order.objects.create(owner=username)
-        cart = Cart.objects.create(
-            order=new_order,
-            owner=username,
-        )
-        return cart
+        fields = ['products', 'total', 'done', 'created_at', 'products']
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -154,12 +151,11 @@ class OrderSerializer(serializers.ModelSerializer):
     owner = serializers.CharField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     status = serializers.CharField(read_only=True)
-    delivered_at = serializers.DateTimeField(read_only=True)
-    cart = serializers.StringRelatedField(many=False)
+    cart = CartSerializer()
 
     class Meta:
         model = Order
-        fields = ['id', 'identifier', 'owner', 'created_at', 'status', 'delivered_at']
+        fields = ['id', 'identifier', 'owner', 'created_at', 'status', 'cart']
 
 
 class StartMessageSerializer(serializers.ModelSerializer):
@@ -196,4 +192,22 @@ class BotModificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'specifications', 'price', 'quantity']
 
 
+class FileSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = ProductsUploadFile
+        fields = ['file']
+
+
+class HelpRulesSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = HelpRules
+        fields = ['text']
+
+
+class ReportFileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ReportFile
+        fields = ['file', 'created_at']
